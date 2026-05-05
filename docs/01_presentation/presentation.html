@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BBB — Bio Body Band | 캡스톤 디자인 제안서</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  :root {
+    --bg: #050a14;
+    --surface: #0d1b2e;
+    --surface2: #122040;
+    --accent: #00c8ff;
+    --accent2: #00ff9d;
+    --accent3: #7b61ff;
+    --text: #e8f0fe;
+    --text-dim: #7a9abf;
+    --danger: #ff4d6d;
+    --warn: #ffd166;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    user-select: none;
+  }
+
+  /* ─── CANVAS BACKGROUND ─── */
+  #bg-canvas {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
+  /* ─── SLIDES CONTAINER ─── */
+  .deck {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 100vh;
+  }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 60px 80px;
+    opacity: 0;
+    transform: translateY(40px);
+    pointer-events: none;
+    transition: opacity 0.6s cubic-bezier(.4,0,.2,1), transform 0.6s cubic-bezier(.4,0,.2,1);
+  }
+
+  .slide.active {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: all;
+  }
+
+  .slide.exit {
+    opacity: 0;
+    transform: translateY(-40px);
+  }
+
+  /* ─── PROGRESS BAR ─── */
+  #progress-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width 0.5s ease;
+    z-index: 100;
+    box-shadow: 0 0 12px var(--accent);
+  }
+
+  /* ─── SLIDE COUNTER ─── */
+  #counter {
+    position: fixed;
+    bottom: 20px;
+    right: 28px;
+    font-size: 12px;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    z-index: 100;
+  }
+
+  /* ─── NAV ARROWS ─── */
+  .nav-btn {
+    position: fixed;
+    bottom: 14px;
+    z-index: 100;
+    background: transparent;
+    border: 1px solid var(--surface2);
+    color: var(--text-dim);
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .nav-btn:hover { background: var(--surface2); color: var(--accent); border-color: var(--accent); }
+  #btn-prev { right: 130px; }
+  #btn-next { right: 80px; }
+
+  /* ─── NAV DOTS ─── */
+  #dots {
+    position: fixed;
+    left: 50%;
+    bottom: 22px;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 100;
+  }
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--surface2);
+    cursor: pointer;
+    transition: all 0.3s;
+    border: 1px solid var(--text-dim);
+  }
+  .dot.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    transform: scale(1.4);
+  }
+
+  /* ─── TYPOGRAPHY ─── */
+  .slide-label {
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--accent);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    opacity: 0;
+    animation: fadeUp 0.5s 0.1s forwards;
+  }
+
+  h1 {
+    font-size: clamp(40px, 5vw, 72px);
+    font-weight: 900;
+    line-height: 1.05;
+    letter-spacing: -2px;
+  }
+
+  h2 {
+    font-size: clamp(28px, 3.5vw, 48px);
+    font-weight: 700;
+    letter-spacing: -1px;
+    margin-bottom: 12px;
+  }
+
+  h3 { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+
+  .gradient-text {
+    background: linear-gradient(120deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .sub {
+    font-size: clamp(16px, 2vw, 22px);
+    color: var(--text-dim);
+    font-weight: 300;
+    line-height: 1.6;
+    margin-top: 8px;
+  }
+
+  /* ─── CARDS ─── */
+  .card-grid {
+    display: grid;
+    gap: 18px;
+    width: 100%;
+    max-width: 1100px;
+  }
+  .card-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .card-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--surface2);
+    border-radius: 16px;
+    padding: 24px;
+    transition: all 0.3s;
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  .card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 24px rgba(0,200,255,0.1);
+    transform: translateY(-2px) !important;
+  }
+  .card.animate { animation: fadeUp 0.5s forwards; }
+
+  .card-icon {
+    font-size: 32px;
+    margin-bottom: 12px;
+    display: block;
+  }
+
+  .card p { font-size: 14px; color: var(--text-dim); line-height: 1.6; margin-top: 6px; }
+
+  /* ─── BADGE ─── */
+  .badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .badge-blue { background: rgba(0,200,255,0.15); color: var(--accent); border: 1px solid rgba(0,200,255,0.3); }
+  .badge-green { background: rgba(0,255,157,0.12); color: var(--accent2); border: 1px solid rgba(0,255,157,0.3); }
+  .badge-purple { background: rgba(123,97,255,0.15); color: var(--accent3); border: 1px solid rgba(123,97,255,0.3); }
+  .badge-red { background: rgba(255,77,109,0.12); color: var(--danger); border: 1px solid rgba(255,77,109,0.3); }
+
+  /* ─── BOM TABLE ─── */
+  .bom-table {
+    width: 100%;
+    max-width: 900px;
+    border-collapse: collapse;
+    font-size: 15px;
+  }
+  .bom-table th {
+    background: var(--surface2);
+    color: var(--accent);
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 12px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .bom-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--surface2);
+    color: var(--text-dim);
+  }
+  .bom-table tr:hover td { background: var(--surface); color: var(--text); }
+  .bom-table td:first-child { color: var(--text); font-weight: 600; }
+  .bom-table td:nth-child(2) { color: var(--accent2); font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+
+  /* ─── FLOW DIAGRAM ─── */
+  .flow-container {
+    width: 100%;
+    max-width: 960px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    flex-wrap: nowrap;
+  }
+
+  .flow-node {
+    background: var(--surface);
+    border: 1.5px solid var(--surface2);
+    border-radius: 12px;
+    padding: 14px 18px;
+    text-align: center;
+    min-width: 120px;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: all 0.3s;
+  }
+  .flow-node:hover { border-color: var(--accent); box-shadow: 0 0 20px rgba(0,200,255,0.15); }
+  .flow-node .node-title { font-size: 13px; font-weight: 600; }
+  .flow-node .node-sub { font-size: 11px; color: var(--text-dim); margin-top: 3px; font-family: 'JetBrains Mono', monospace; }
+  .flow-node.accent { border-color: var(--accent); background: rgba(0,200,255,0.06); }
+  .flow-node.green { border-color: var(--accent2); background: rgba(0,255,157,0.06); }
+  .flow-node.warn { border-color: var(--warn); background: rgba(255,209,102,0.06); }
+  .flow-node.danger { border-color: var(--danger); background: rgba(255,77,109,0.06); }
+
+  .flow-arrow {
+    color: var(--text-dim);
+    font-size: 22px;
+    padding: 0 6px;
+    opacity: 0;
+    flex-shrink: 0;
+  }
+
+  /* ─── TIMELINE ─── */
+  .timeline {
+    width: 100%;
+    max-width: 900px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .tl-item {
+    display: flex;
+    align-items: stretch;
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+
+  .tl-left {
+    width: 90px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    padding-right: 20px;
+  }
+
+  .tl-week {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 600;
+    padding-top: 14px;
+  }
+
+  .tl-line {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 16px;
+    flex-shrink: 0;
+  }
+  .tl-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin-top: 18px;
+    flex-shrink: 0;
+    box-shadow: 0 0 10px var(--accent);
+  }
+  .tl-vert {
+    flex: 1;
+    width: 2px;
+    background: linear-gradient(to bottom, var(--accent), transparent);
+    min-height: 20px;
+  }
+  .tl-item:last-child .tl-dot { background: var(--accent2); box-shadow: 0 0 14px var(--accent2); }
+  .tl-item:last-child .tl-vert { display: none; }
+
+  .tl-content {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--surface2);
+    border-radius: 12px;
+    padding: 12px 18px;
+    margin-bottom: 10px;
+  }
+  .tl-content h3 { font-size: 14px; font-weight: 600; }
+  .tl-content p { font-size: 13px; color: var(--text-dim); margin-top: 3px; }
+
+  /* ─── SCENARIO STEPS ─── */
+  .steps {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+    max-width: 700px;
+  }
+  .step {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    background: var(--surface);
+    border: 1px solid var(--surface2);
+    border-radius: 12px;
+    padding: 16px 20px;
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  .step-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent3));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    flex-shrink: 0;
+    color: var(--bg);
+  }
+  .step-body h3 { font-size: 15px; }
+  .step-body p { font-size: 13px; color: var(--text-dim); margin-top: 4px; }
+
+  /* ─── SPEC ROW ─── */
+  .spec-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+    max-width: 900px;
+  }
+  .spec-pill {
+    background: var(--surface);
+    border: 1px solid var(--surface2);
+    border-radius: 8px;
+    padding: 10px 18px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-width: 130px;
+    opacity: 0;
+    transition: all 0.3s;
+  }
+  .spec-pill:hover { border-color: var(--accent2); }
+  .spec-pill .val { font-size: 22px; font-weight: 700; color: var(--accent2); font-family: 'JetBrains Mono', monospace; }
+  .spec-pill .lbl { font-size: 11px; color: var(--text-dim); letter-spacing: 0.5px; }
+
+  /* ─── TITLE SLIDE ─── */
+  .title-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid;
+    opacity: 0.15;
+    animation: ring-spin linear infinite;
+  }
+
+  /* ─── ANIMATIONS ─── */
+  @keyframes fadeUp {
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    to { opacity: 1; }
+  }
+  @keyframes ring-spin {
+    to { transform: rotate(360deg); }
+  }
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 10px var(--accent); }
+    50% { box-shadow: 0 0 28px var(--accent), 0 0 50px var(--accent); }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+  @keyframes bar-grow {
+    from { width: 0; }
+  }
+
+  .animate-float { animation: float 3s ease-in-out infinite; }
+  .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+
+  /* ─── SLIDE 1: TITLE ─── */
+  #slide-1 { text-align: center; position: relative; overflow: hidden; }
+  .ring1 { width: 500px; height: 500px; border-color: var(--accent); animation-duration: 30s; top: 50%; left: 50%; margin: -250px 0 0 -250px; }
+  .ring2 { width: 360px; height: 360px; border-color: var(--accent2); animation-duration: 20s; animation-direction: reverse; top: 50%; left: 50%; margin: -180px 0 0 -180px; }
+  .ring3 { width: 220px; height: 220px; border-color: var(--accent3); animation-duration: 12s; top: 50%; left: 50%; margin: -110px 0 0 -110px; }
+  .bbb-logo {
+    font-size: 90px;
+    font-weight: 900;
+    letter-spacing: -4px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2), var(--accent3));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: fadeIn 0.8s 0.3s both;
+  }
+  .title-tags {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 20px;
+    animation: fadeUp 0.5s 0.8s both;
+  }
+
+  /* ─── SLIDE: MODE SPLIT ─── */
+  .mode-split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    width: 100%;
+    max-width: 1000px;
+  }
+  .mode-card {
+    background: var(--surface);
+    border-radius: 20px;
+    padding: 32px;
+    border: 1.5px solid var(--surface2);
+    opacity: 0;
+    transform: scale(0.95);
+    transition: all 0.4s;
+  }
+  .mode-card:hover {
+    transform: scale(1.02) !important;
+  }
+  .mode-card.safety { border-color: rgba(255,77,109,0.4); }
+  .mode-card.control { border-color: rgba(0,200,255,0.4); }
+  .mode-icon { font-size: 40px; margin-bottom: 12px; }
+  .mode-list { list-style: none; margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+  .mode-list li { font-size: 14px; color: var(--text-dim); display: flex; align-items: center; gap: 8px; }
+  .mode-list li::before { content: '→'; color: var(--accent); font-weight: 700; }
+
+  /* ─── SLIDE: HW ARCH ─── */
+  .hw-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    width: 100%;
+    max-width: 1000px;
+  }
+  .hw-item {
+    background: var(--surface);
+    border: 1px solid var(--surface2);
+    border-radius: 14px;
+    padding: 18px 14px;
+    text-align: center;
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  .hw-item .hw-icon { font-size: 28px; margin-bottom: 8px; }
+  .hw-item .hw-name { font-size: 13px; font-weight: 600; }
+  .hw-item .hw-model { font-size: 11px; color: var(--accent2); font-family: 'JetBrains Mono', monospace; margin-top: 4px; }
+  .hw-item .hw-role { font-size: 11px; color: var(--text-dim); margin-top: 4px; line-height: 1.4; }
+
+  /* ─── METRIC BAR ─── */
+  .metric-list { display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 700px; }
+  .metric-row { opacity: 0; }
+  .metric-label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+  .metric-label .name { color: var(--text-dim); }
+  .metric-label .val { color: var(--accent2); font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+  .metric-track { height: 6px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
+  .metric-fill { height: 100%; border-radius: 4px; }
+
+  /* ─── FINAL SLIDE ─── */
+  .final-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    width: 100%;
+    max-width: 900px;
+    margin-top: 32px;
+  }
+  .final-card {
+    background: var(--surface);
+    border: 1px solid var(--surface2);
+    border-radius: 14px;
+    padding: 20px;
+    text-align: center;
+    opacity: 0;
+  }
+  .final-card .fc-icon { font-size: 28px; margin-bottom: 8px; }
+  .final-card h3 { font-size: 14px; font-weight: 600; }
+  .final-card p { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+
+<div class="deck" id="deck">
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 1 — TITLE
+  ══════════════════════════════════════════ -->
+  <div class="slide active" id="slide-1">
+    <div class="title-ring ring1"></div>
+    <div class="title-ring ring2"></div>
+    <div class="title-ring ring3"></div>
+
+    <div class="slide-label">Capstone Design 2026</div>
+    <div class="bbb-logo">BBB</div>
+    <h2 style="font-weight:300; font-size:24px; margin-top:8px; letter-spacing:6px; animation: fadeIn 0.8s 0.5s both; opacity:0">Bio Body Band</h2>
+    <p class="sub" style="max-width:560px; text-align:center; animation: fadeUp 0.5s 0.7s both; opacity:0">
+      EMG + IMU 센서로 작업자의 근피로를 실시간 모니터링하고,<br>양손이 묶인 현장에서도 WiFi 핸즈프리 제어를 실현하는<br>스마트 웨어러블 아대
+    </p>
+    <div class="title-tags">
+      <span class="badge badge-blue">ESP32-S3</span>
+      <span class="badge badge-green">MicroPython</span>
+      <span class="badge badge-purple">WiFi</span>
+      <span class="badge badge-red">EMG · IMU</span>
+    </div>
+    <p style="margin-top:24px; font-size:13px; color:var(--text-dim); letter-spacing:1px; opacity:0; animation: fadeIn 1s 1.0s both">
+      "Protecting the Body, Bridging the Device."
+    </p>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 2 — 문제 정의
+  ══════════════════════════════════════════ -->
+  <div class="slide" id="slide-2">
+    <div class="slide-label">Problem Statement</div>
+    <h2>왜 <span class="gradient-text">BBB</span>가 필요한가?</h2>
+    <p class="sub" style="margin-bottom:36px">기존 안전 솔루션이 해결하지 못한 3가지 문제</p>
+
+    <div class="card-grid cols-3" style="max-width:960px">
+      <div class="card" style="animation-delay:0.1s">
+        <span class="card-icon">⚠️</span>
+        <h3>근피로 감지 수단 없음</h3>
+        <p>근골격계 질환은 국내 직업병의 <strong style="color:var(--warn)">약 70%</strong>를 차지. 물류·제조 현장에서 근피로가 누적되면 물건을 떨어트리거나 부상으로 이어지지만, 이를 실시간 경보하는 현장용 웨어러블이 없음.</p>
+      </div>
+      <div class="card" style="animation-delay:0.2s">
+        <span class="card-icon">🧤</span>
+        <h3>현장 오염 · 양손 사용 문제</h3>
+        <p>기름·화학약품이 묻은 장갑을 착용한 채 공구를 잡고 있는 상황에서 노트북·태블릿을 조작하면 정밀 기기 오염·고장. 공구를 내려놓지 않고 조작할 수단이 필요.</p>
+      </div>
+      <div class="card" style="animation-delay:0.3s">
+        <span class="card-icon">🤚</span>
+        <h3>비접촉식 입력장치 부재</h3>
+        <p>음성인식은 소음 환경에서 오인식, 풋스위치는 이동 중 불가, Eye Tracker는 고가(50만원↑). 산업 현장에서 실용적으로 쓸 수 있는 신체 동작 기반 입력장치가 없음.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 3 — 프로젝트 목표
+  ══════════════════════════════════════════ -->
+  <div class="slide" id="slide-3">
+    <div class="slide-label">Project Goals</div>
+    <h2>프로젝트 <span class="gradient-text">목표</span></h2>
+
+    <div class="mode-split" style="margin-top:32px">
+      <div class="mode-card safety" id="mc-safety">
+        <div class="mode-icon">🛡️</div>
+        <span class="badge badge-red" style="margin-bottom:10px; display:inline-block">Safety Mode</span>
+        <h3 style="font-size:18px">근피로 모니터링</h3>
+        <ul class="mode-list">
+          <li>EMG Median Frequency 실시간 분석</li>
+          <li>피로 임계치 80% / 95% 이중 경보</li>
+          <li>진동 + LED 촉각·시각 피드백</li>
+          <li>근골격계 질환 사전 예방</li>
+        </ul>
+      </div>
+      <div class="mode-card control" id="mc-control">
+        <div class="mode-icon">🎮</div>
+        <span class="badge badge-blue" style="margin-bottom:10px; display:inline-block">Control Mode</span>
+        <h3 style="font-size:18px">핸즈프리 WiFi 마우스</h3>
+        <ul class="mode-list">
+          <li>IMU 팔 기울기 → 커서 이동</li>
+          <li>EMG Spike(주먹 쥐기) → 클릭</li>
+          <li>WiFi → 노트북 Python(pyautogui) 직접 제어</li>
+          <li>공구·장갑 착용 상태 즉시 조작 가능</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 4 — 하드웨어 구성
+  ══════════════════════════════════════════ -->
+  <div class="slide" id="slide-4">
+    <div class="slide-label">Hardware Architecture</div>
+    <h2>하드웨어 <span class="gradient-text">구성</span></h2>
+    <p class="sub" style="margin-bottom:18px; font-size:14px">설계 원칙: <span style="color:var(--accent2); font-weight:600">경량화 · 소형화 최우선</span> &nbsp;—&nbsp; 불필요한 부품 제거, 전류 예산 내 설계</p>
+
+    <div class="hw-grid" style="margin-top:0">
+      <div class="hw-item" style="animation-delay:0.05s">
+        <div class="hw-icon">🧠</div>
+        <div class="hw-name">MCU</div>
+        <div class="hw-model">XIAO ESP32-S3</div>
+        <div class="hw-role">BLE HID · WiFi · USB-C 충전 내장</div>
+      </div>
+      <div class="hw-item" style="animation-delay:0.1s">
+        <div class="hw-icon">💪</div>
+        <div class="hw-name">EMG Sensor</div>
+        <div class="hw-model">MyoWare 2.0</div>
+        <div class="hw-role">근육 수축 강도 · 피로도 수집</div>
+      </div>
+      <div class="hw-item" style="animation-delay:0.15s">
+        <div class="hw-icon">📐</div>
+        <div class="hw-name">IMU Sensor</div>
+        <div class="hw-model">MPU6050</div>
+        <div class="hw-role">팔 기울기 X/Y · 6축 관성 감지</div>
+      </div>
+      <div class="hw-item" style="animation-delay:0.2s">
+        <div class="hw-icon">🔋</div>
+        <div class="hw-name">Battery</div>
+        <div class="hw-model">Li-Po 3.7V 500mAh</div>
+        <div class="hw-role">JST 1.25mm · 약 2.7시간 연속 동작</div>
+      </div>
+      <div class="hw-item" style="animation-delay:0.25s; border-color:rgba(255,209,102,0.3)">
+        <div class="hw-icon">📳</div>
+        <div class="hw-name">Vibration <span class="badge badge-purple" style="font-size:9px; padding:2px 6px; vertical-align:middle">Option</span></div>
+        <div class="hw-model">Coin Motor</div>
+        <div class="hw-role">근위험 도달 시 촉각 경보</div>
+      </div>
+      <div class="hw-item" style="animation-delay:0.3s; border-color:rgba(255,209,102,0.3)">
+        <div class="hw-icon">🖥️</div>
+        <div class="hw-name">Display <span class="badge badge-purple" style="font-size:9px; padding:2px 6px; vertical-align:middle">Option</span></div>
+        <div class="hw-model">OLED 0.96"</div>
+        <div class="hw-role">모드 · 배터리 시각화</div>
+      </div>
+      <div class="hw-item" style="animation-delay:0.35s">
+        <div class="hw-icon">🩹</div>
+        <div class="hw-name">Electrode</div>
+        <div class="hw-model">Disposable Patch</div>
+        <div class="hw-role">피부 접촉용 교체형 전극</div>
+      </div>
+      <div class="hw-item" style="animation-delay:0.4s">
+        <div class="hw-icon">🔌</div>
+        <div class="hw-name">Wiring</div>
+        <div class="hw-model">점퍼 와이어 + 벨크로</div>
+        <div class="hw-role">브레드보드 없이 모듈 직결 · 아대 고정</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 6 — 동작 흐름
+  ══════════════════════════════════════════ -->
+  <div class="slide" id="slide-6">
+    <div class="slide-label">System Flow</div>
+    <h2>아대 <span class="gradient-text">동작 흐름</span></h2>
+
+    <!-- Safety Flow -->
+    <div style="width:100%; max-width:960px; margin-top:24px">
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px">
+        <span class="badge badge-red">Safety Mode</span>
+        <span style="font-size:12px; color:var(--text-dim)">근피로 모니터링 파이프라인</span>
+      </div>
+      <div class="flow-container" id="flow-safety">
+        <div class="flow-node accent" style="animation-delay:0.0s"><div class="node-title">EMG 샘플링</div><div class="node-sub">1kHz ADC</div></div>
+        <div class="flow-arrow" style="animation-delay:0.05s">→</div>
+        <div class="flow-node" style="animation-delay:0.1s"><div class="node-title">Band-pass</div><div class="node-sub">20~500Hz</div></div>
+        <div class="flow-arrow" style="animation-delay:0.15s">→</div>
+        <div class="flow-node" style="animation-delay:0.2s"><div class="node-title">FFT 분석</div><div class="node-sub">Median Freq.</div></div>
+        <div class="flow-arrow" style="animation-delay:0.25s">→</div>
+        <div class="flow-node warn" style="animation-delay:0.3s"><div class="node-title">80% 경고</div><div class="node-sub">진동 1회</div></div>
+        <div class="flow-arrow" style="color:var(--danger); animation-delay:0.35s">→</div>
+        <div class="flow-node danger" style="animation-delay:0.4s"><div class="node-title">95% 긴급</div><div class="node-sub">강진동+LED</div></div>
+      </div>
+    </div>
+
+    <!-- Control Flow -->
+    <div style="width:100%; max-width:960px; margin-top:28px">
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px">
+        <span class="badge badge-blue">Control Mode</span>
+        <span style="font-size:12px; color:var(--text-dim)">BLE HID 마우스 파이프라인</span>
+      </div>
+      <div class="flow-container" id="flow-control">
+        <div class="flow-node accent" style="animation-delay:0.5s"><div class="node-title">IMU 읽기</div><div class="node-sub">100Hz I2C</div></div>
+        <div class="flow-arrow" style="animation-delay:0.55s">→</div>
+        <div class="flow-node" style="animation-delay:0.6s"><div class="node-title">Comp. Filter</div><div class="node-sub">pitch / roll</div></div>
+        <div class="flow-arrow" style="animation-delay:0.65s">→</div>
+        <div class="flow-node green" style="animation-delay:0.7s"><div class="node-title">WiFi 전송</div><div class="node-sub">UDP → 노트북</div></div>
+        <div class="flow-arrow" style="animation-delay:0.75s">→</div>
+        <div class="flow-node" style="animation-delay:0.8s"><div class="node-title">EMG Spike</div><div class="node-sub">주먹 쥐기</div></div>
+        <div class="flow-arrow" style="animation-delay:0.85s">→</div>
+        <div class="flow-node green" style="animation-delay:0.9s"><div class="node-title">pyautogui</div><div class="node-sub">이동·클릭</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 7 — 시나리오 A
+  ══════════════════════════════════════════ -->
+  <div class="slide" id="slide-7">
+    <div class="slide-label">Demo Scenario A</div>
+    <div style="display:flex; align-items:center; gap:14px; margin-bottom:8px">
+      <h2>Safety Mode</h2>
+      <span class="badge badge-red">근골격계 질환 예방</span>
+    </div>
+    <p class="sub" style="margin-bottom:28px">물류 창고에서 하루 500회 이상 반복 하역 작업을 할 때 — 착용 후 아무런 조작 없이 자동 감지</p>
+
+    <div class="steps">
+      <div class="step" style="animation-delay:0.1s">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>작업 시작 — BBB 착용</h3>
+          <p>아대 착용 후 전원 ON → WiFi로 노트북 모니터링 스크립트에 자동 연결 · 기준 MF 측정 시작</p>
+        </div>
+      </div>
+      <div class="step" style="animation-delay:0.2s">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>피로도 누적 — 자각 없이 진행 중</h3>
+          <p>반복 들기 1.5시간 경과 → EMG Median Frequency 저주파 이동 → <strong style="color:var(--warn)">본인은 아직 피로를 자각 못함</strong></p>
+        </div>
+      </div>
+      <div class="step" style="animation-delay:0.3s">
+        <div class="step-num">3</div>
+        <div class="step-body" style="display:flex; gap:12px; flex-wrap:wrap; align-items:center">
+          <div>
+            <h3>1단계 경보 — 80% 도달</h3>
+            <p>손목에 진동 1회 + LED 노란색 → "지금 5분 쉬세요" 신호. 자연스럽게 휴식 결정</p>
+          </div>
+          <span class="badge badge-red" style="margin-left:auto">95% 도달 시 강진동</span>
+        </div>
+      </div>
+      <div class="step" style="animation-delay:0.4s">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <h3>결과 — 선제적 휴식으로 부상 예방</h3>
+          <p>오전 중 2~3회 자발적 휴식 → 임계치 초과 없음 → 전완 건염 발생 위험 대폭 감소. 미착용 시 동일 작업 1개월 반복 후 건염 진단 사례와 비교</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 8 — 시나리오 B
+  ══════════════════════════════════════════ -->
+  <div class="slide" id="slide-8">
+    <div class="slide-label">Demo Scenario B</div>
+    <div style="display:flex; align-items:center; gap:14px; margin-bottom:8px">
+      <h2>Control Mode</h2>
+      <span class="badge badge-blue">오염 환경 핸즈프리 제어</span>
+    </div>
+    <p class="sub" style="margin-bottom:28px">공구를 잡은 채 매뉴얼(AMM)을 수십 회 확인해야 하는 정비 작업을 할 때 — 공구를 내려놓지 않고 조작</p>
+
+    <div class="steps">
+      <div class="step" style="animation-delay:0.1s">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>상황 — 양손이 묶인 정비 현장</h3>
+          <p>장갑 착용 + 양손에 공구. 매뉴얼 다음 페이지 확인 필요 → 기존에는 공구 내려놓기 → 터치패드 조작 → 다시 집기 (~15초 낭비 / 1회)</p>
+        </div>
+      </div>
+      <div class="step" style="animation-delay:0.2s">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>커서 이동 (IMU 팔 기울기)</h3>
+          <p>팔을 원하는 방향으로 기울이면 MPU6050 pitch/roll → WiFi → pyautogui.move() → 커서 이동. 공구 그대로 유지</p>
+        </div>
+      </div>
+      <div class="step" style="animation-delay:0.3s">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h3>클릭 (EMG 주먹 쥐기)</h3>
+          <p>주먹을 순간 꽉 쥐면 EMG 스파이크 감지 → WiFi → pyautogui.click() → 다음 페이지. 전체 소요 시간 <strong style="color:var(--accent2)">~2초</strong></p>
+        </div>
+      </div>
+      <div class="step" style="animation-delay:0.4s">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <h3>결과 — 작업 흐름 유지</h3>
+          <p>기기를 한 번도 건드리지 않고 정보 확인 완료. 하루 50회 조회 시 약 10분 절약 · 오염 전파 Zero · 정밀 기기 고장 방지</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 9 — 개발 일정
+  ══════════════════════════════════════════ -->
+  <div class="slide" id="slide-9">
+    <div class="slide-label">Development Schedule</div>
+    <h2>12주 <span class="gradient-text">개발 일정</span></h2>
+
+    <div class="timeline" style="margin-top:28px; max-width:760px; width:100%">
+      <div class="tl-item" style="animation-delay:0.05s">
+        <div class="tl-left"><div class="tl-week">W1–W2</div></div>
+        <div class="tl-line"><div class="tl-dot"></div><div class="tl-vert"></div></div>
+        <div class="tl-content"><h3>환경 구축</h3><p>부품 수급 · ESP32-S3 BLE 기본 통신 환경 구축</p></div>
+      </div>
+      <div class="tl-item" style="animation-delay:0.15s">
+        <div class="tl-left"><div class="tl-week">W3–W5</div></div>
+        <div class="tl-line"><div class="tl-dot"></div><div class="tl-vert"></div></div>
+        <div class="tl-content"><h3>신호처리 알고리즘</h3><p>EMG Band-pass 필터 · FFT Median Frequency · IMU Complementary Filter</p></div>
+      </div>
+      <div class="tl-item" style="animation-delay:0.25s">
+        <div class="tl-left"><div class="tl-week">W6–W8</div></div>
+        <div class="tl-line"><div class="tl-dot"></div><div class="tl-vert"></div></div>
+        <div class="tl-content"><h3>WiFi 통신 + 배선 조립</h3><p>WiFi UDP 소켓 최적화 · pyautogui 제어 · 모듈 직결 와이어링 완성</p></div>
+      </div>
+      <div class="tl-item" style="animation-delay:0.35s">
+        <div class="tl-left"><div class="tl-week">W9–W11</div></div>
+        <div class="tl-line"><div class="tl-dot"></div><div class="tl-vert"></div></div>
+        <div class="tl-content"><h3>통합 테스트 &amp; 보정</h3><p>시나리오별 데이터 보정 · 사용자 피드백 반영 · QA</p></div>
+      </div>
+      <div class="tl-item" style="animation-delay:0.45s">
+        <div class="tl-left"><div class="tl-week">W12</div></div>
+        <div class="tl-line"><div class="tl-dot"></div><div class="tl-vert"></div></div>
+        <div class="tl-content" style="border-color:var(--accent2)">
+          <h3 style="color:var(--accent2)">🏁 최종 발표 &amp; 시연</h3>
+          <p>2026년 6월 12일 — 두 시나리오 라이브 데모</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 10 — 기대 효과 / 마무리
+  ══════════════════════════════════════════ -->
+  <div class="slide" id="slide-10">
+    <div class="slide-label">Impact &amp; Closing</div>
+    <h2>기대 <span class="gradient-text">효과</span></h2>
+    <p class="sub">BBB 가 만드는 변화</p>
+
+    <div class="final-grid">
+      <div class="final-card" style="animation-delay:0.1s">
+        <div class="fc-icon">🏭</div>
+        <h3>산업 안전 향상</h3>
+        <p>근피로 데이터 기반의 휴식 타이밍 제공 → 근골격계 질환 발생률 감소</p>
+      </div>
+      <div class="final-card" style="animation-delay:0.2s">
+        <div class="fc-icon">🔬</div>
+        <h3>오염 환경 생산성</h3>
+        <p>기기 비접촉 제어 → 장비 오염·고장 Zero → 정비·연구 현장 적용 가능</p>
+      </div>
+      <div class="final-card" style="animation-delay:0.3s">
+        <div class="fc-icon">📡</div>
+        <h3>WiFi 실시간 제어</h3>
+        <p>LAN 기준 ~1~5ms 레이턴시 · 노트북 Python 직접 제어 → 별도 드라이버 없이 즉시 동작</p>
+      </div>
+      <div class="final-card" style="animation-delay:0.4s">
+        <div class="fc-icon">⚡</div>
+        <h3>경량 웨어러블</h3>
+        <p>초소형 폼팩터 + Li-Po 2시간+ 동작 → 장시간 착용 현실적</p>
+      </div>
+      <div class="final-card" style="animation-delay:0.5s">
+        <div class="fc-icon">🧬</div>
+        <h3>바이오 신호처리</h3>
+        <p>EMG FFT + IMU 융합 알고리즘 → 학술적 기여 및 확장 가능 플랫폼</p>
+      </div>
+      <div class="final-card" style="animation-delay:0.6s; border-color:rgba(0,200,255,0.3)">
+        <div class="fc-icon">🏆</div>
+        <h3>최종 목표</h3>
+        <p style="color:var(--accent)">2026.06.12 라이브 시연 — Safety &amp; Control 두 시나리오 완전 동작</p>
+      </div>
+    </div>
+
+    <div style="margin-top:32px; text-align:center; opacity:0; animation: fadeIn 0.8s 0.8s forwards">
+      <div class="bbb-logo" style="font-size:42px; display:inline-block">"Protecting the Body, Bridging the Device."</div>
+    </div>
+  </div>
+
+</div><!-- /deck -->
+
+<!-- ─── CONTROLS ─── -->
+<div id="progress-bar" style="width:11%"></div>
+<span id="counter">1 / 9</span>
+<button class="nav-btn" id="btn-prev" onclick="changeSlide(-1)">‹</button>
+<button class="nav-btn" id="btn-next" onclick="changeSlide(1)">›</button>
+<div id="dots"></div>
+
+<script>
+/* ═══════════════════════════════════════════════
+   PARTICLE BACKGROUND
+═══════════════════════════════════════════════ */
+const canvas = document.getElementById('bg-canvas');
+const ctx = canvas.getContext('2d');
+let W, H, particles = [];
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+
+function initParticles(n = 80) {
+  particles = Array.from({length: n}, () => ({
+    x: Math.random() * W, y: Math.random() * H,
+    vx: (Math.random() - 0.5) * 0.4,
+    vy: (Math.random() - 0.5) * 0.4,
+    r: Math.random() * 1.5 + 0.5,
+    a: Math.random()
+  }));
+}
+
+function drawParticles() {
+  ctx.clearRect(0, 0, W, H);
+  for (let i = 0; i < particles.length; i++) {
+    const p = particles[i];
+    p.x += p.vx; p.y += p.vy;
+    if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+    if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(0,200,255,${p.a * 0.6})`;
+    ctx.fill();
+    for (let j = i + 1; j < particles.length; j++) {
+      const q = particles[j];
+      const dx = p.x - q.x, dy = p.y - q.y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist < 120) {
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y);
+        ctx.strokeStyle = `rgba(0,200,255,${0.15 * (1 - dist/120)})`;
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+      }
+    }
+  }
+  requestAnimationFrame(drawParticles);
+}
+
+resize(); initParticles(); drawParticles();
+window.addEventListener('resize', () => { resize(); initParticles(); });
+
+/* ═══════════════════════════════════════════════
+   SLIDE ENGINE
+═══════════════════════════════════════════════ */
+const TOTAL = 9;
+let current = 0;
+
+const slides = Array.from(document.querySelectorAll('.slide'));
+
+// Build dots
+const dotsEl = document.getElementById('dots');
+slides.forEach((_, i) => {
+  const d = document.createElement('div');
+  d.className = 'dot' + (i === 0 ? ' active' : '');
+  d.onclick = () => goTo(i);
+  dotsEl.appendChild(d);
+});
+
+function goTo(idx) {
+  if (idx < 0 || idx >= TOTAL || idx === current) return;
+  const prev = current;
+  current = idx;
+
+  slides[prev].classList.add('exit');
+  slides[prev].classList.remove('active');
+  setTimeout(() => slides[prev].classList.remove('exit'), 600);
+
+  slides[current].classList.add('active');
+  triggerSlideAnimations(current);
+
+  document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === current));
+  document.getElementById('counter').textContent = `${current + 1} / ${TOTAL}`;
+  document.getElementById('progress-bar').style.width = `${((current + 1) / TOTAL) * 100}%`;
+}
+
+function changeSlide(dir) { goTo(current + dir); }
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); changeSlide(1); }
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); changeSlide(-1); }
+});
+
+// Touch swipe
+let touchStartX = 0;
+document.addEventListener('touchstart', e => touchStartX = e.touches[0].clientX);
+document.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  if (Math.abs(dx) > 50) changeSlide(dx < 0 ? 1 : -1);
+});
+
+/* ═══════════════════════════════════════════════
+   PER-SLIDE ANIMATIONS
+═══════════════════════════════════════════════ */
+function triggerSlideAnimations(idx) {
+  const slide = slides[idx];
+
+  // Cards
+  slide.querySelectorAll('.card').forEach((el, i) => {
+    el.style.opacity = 0; el.style.transform = 'translateY(20px)';
+    setTimeout(() => {
+      el.style.transition = 'opacity 0.5s ease, transform 0.5s ease, box-shadow 0.3s, border-color 0.3s';
+      el.style.opacity = 1; el.style.transform = 'translateY(0)';
+    }, 100 + i * 80);
+  });
+
+  // Mode cards
+  slide.querySelectorAll('.mode-card').forEach((el, i) => {
+    el.style.opacity = 0; el.style.transform = 'scale(0.95)';
+    setTimeout(() => {
+      el.style.transition = 'opacity 0.5s ease, transform 0.4s ease';
+      el.style.opacity = 1; el.style.transform = 'scale(1)';
+    }, 150 + i * 120);
+  });
+
+  // HW items
+  slide.querySelectorAll('.hw-item').forEach((el, i) => {
+    const delay = parseFloat(el.style.animationDelay || '0') * 1000;
+    el.style.opacity = 0; el.style.transform = 'scale(0.85)';
+    setTimeout(() => {
+      el.style.transition = 'opacity 0.4s ease, transform 0.4s ease, border-color 0.3s, box-shadow 0.3s';
+      el.style.opacity = 1; el.style.transform = 'scale(1)';
+      el.addEventListener('mouseenter', () => el.style.borderColor = 'var(--accent)');
+      el.addEventListener('mouseleave', () => el.style.borderColor = '');
+    }, delay);
+  });
+
+  // Flow nodes
+  slide.querySelectorAll('.flow-node, .flow-arrow').forEach(el => {
+    const delay = parseFloat(el.style.animationDelay || '0') * 1000;
+    el.style.opacity = 0;
+    setTimeout(() => {
+      el.style.transition = 'opacity 0.4s ease';
+      el.style.opacity = 1;
+    }, delay * 1000 + 100);
+  });
+
+  // Steps
+  slide.querySelectorAll('.step').forEach((el, i) => {
+    const delay = parseFloat(el.style.animationDelay || '0') * 1000;
+    el.style.opacity = 0; el.style.transform = 'translateX(-20px)';
+    setTimeout(() => {
+      el.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      el.style.opacity = 1; el.style.transform = 'translateX(0)';
+    }, delay);
+  });
+
+  // Spec pills
+  slide.querySelectorAll('.spec-pill').forEach((el, i) => {
+    const delay = parseFloat(el.style.animationDelay || '0') * 1000;
+    el.style.opacity = 0; el.style.transform = 'translateY(12px)';
+    setTimeout(() => {
+      el.style.transition = 'opacity 0.4s ease, transform 0.4s ease, border-color 0.3s';
+      el.style.opacity = 1; el.style.transform = 'translateY(0)';
+    }, delay);
+  });
+
+  // Metric rows + bar animation
+  slide.querySelectorAll('.metric-row').forEach((el, i) => {
+    const delay = parseFloat(el.style.animationDelay || '0') * 1000;
+    el.style.opacity = 0;
+    setTimeout(() => {
+      el.style.transition = 'opacity 0.4s ease';
+      el.style.opacity = 1;
+      const fill = el.querySelector('.metric-fill');
+      if (fill) {
+        const target = fill.getAttribute('data-w');
+        setTimeout(() => fill.style.width = target, 200);
+      }
+    }, delay);
+  });
+
+  // Timeline items
+  slide.querySelectorAll('.tl-item').forEach((el, i) => {
+    const delay = parseFloat(el.style.animationDelay || '0') * 1000;
+    el.style.opacity = 0; el.style.transform = 'translateX(-20px)';
+    setTimeout(() => {
+      el.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      el.style.opacity = 1; el.style.transform = 'translateX(0)';
+    }, delay);
+  });
+
+  // Final cards
+  slide.querySelectorAll('.final-card').forEach((el, i) => {
+    const delay = parseFloat(el.style.animationDelay || '0') * 1000;
+    el.style.opacity = 0; el.style.transform = 'scale(0.9)';
+    setTimeout(() => {
+      el.style.transition = 'opacity 0.4s ease, transform 0.4s ease, border-color 0.3s';
+      el.style.opacity = 1; el.style.transform = 'scale(1)';
+    }, delay);
+  });
+
+  // Flow nodes with sequential reveal
+  const flowNodes = slide.querySelectorAll('.flow-node');
+  const flowArrows = slide.querySelectorAll('.flow-arrow');
+  flowNodes.forEach((el, i) => {
+    const delay = parseFloat(el.style.animationDelay || '0') * 1000 + 150;
+    el.style.opacity = 0;
+    setTimeout(() => {
+      el.style.transition = 'opacity 0.35s ease, border-color 0.3s, box-shadow 0.3s';
+      el.style.opacity = 1;
+    }, delay);
+  });
+  flowArrows.forEach((el, i) => {
+    const delay = parseFloat(el.style.animationDelay || '0') * 1000 + 150;
+    el.style.opacity = 0;
+    setTimeout(() => {
+      el.style.transition = 'opacity 0.3s ease';
+      el.style.opacity = 1;
+    }, delay);
+  });
+}
+
+// Trigger initial slide
+triggerSlideAnimations(0);
+</script>
+</body>
+</html>

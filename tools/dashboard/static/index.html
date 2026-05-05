@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BBB 근피로도 모니터링 시스템 - 아주대학교</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header with Ajou University branding -->
+        <header class="main-header">
+            <div class="header-content">
+                <div class="logo-section">
+                    <div class="university-info">
+                        <h1 class="university-title">아주대학교</h1>
+                        <p class="department-name">대학원 공학학부 캡스톤 설계</p>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <span id="connection-status" class="status-indicator offline">오프라인</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Project Navigation -->
+        <nav class="project-nav">
+            <div class="nav-content">
+                <h2 class="project-title">🔬 BBB (Bio Body Band) 근피로도 실시간 모니터링 시스템</h2>
+                <p class="project-subtitle">EMG 신호 분석을 통한 작업자 피로도 관리</p>
+            </div>
+        </nav>
+
+        <main class="content-wrapper">
+            <!-- Worker Information Panel -->
+            <section class="info-panel">
+                <div class="panel-header">
+                    <h3>작업자 정보</h3>
+                </div>
+                <div class="panel-content">
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="label">작업자 ID</span>
+                            <span class="value" id="worker-id">Worker-01</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">작업 모드</span>
+                            <span class="value mode-badge">Safety Mode</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">세션 시간</span>
+                            <span class="value" id="session-time">00:00:00</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Main Monitoring Section -->
+            <section class="monitoring-section">
+                <div class="gauge-section">
+                    <div class="section-header">
+                        <h2>실시간 피로도 지표</h2>
+                        <p class="section-subtitle">근전도 신호 분석 결과</p>
+                    </div>
+
+                    <div class="gauge-container">
+                        <div class="gauge-wrapper">
+                            <svg class="gauge" viewBox="0 0 200 120">
+                                <path d="M 20 100 A 80 80 0 0 1 180 100"
+                                      class="gauge-bg" />
+                                <path d="M 20 100 A 80 80 0 0 1 180 100"
+                                      class="gauge-fill" id="gauge-arc" />
+                                <text x="100" y="95" class="gauge-text" id="fatigue-value">0%</text>
+                            </svg>
+                        </div>
+
+                        <div class="metrics-display">
+                            <div class="metric-card">
+                                <div class="metric-label">중앙주파수 (MF)</div>
+                                <div class="metric-value" id="mf-value">0.0 Hz</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">상태</div>
+                                <div class="metric-status" id="status-text">대기 중</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-label">경고 레벨</div>
+                                <div class="alert-level" id="alert-level">정상</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="charts-section">
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3>근전도 신호 (실시간)</h3>
+                            <p class="chart-description">1000Hz 샘플링 레이트</p>
+                        </div>
+                        <canvas id="emg-chart"></canvas>
+                    </div>
+
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3>피로도 추이</h3>
+                            <p class="chart-description">최근 6초</p>
+                        </div>
+                        <canvas id="fatigue-chart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Alert and Log Section -->
+            <section class="alert-section">
+                <div class="section-header">
+                    <h2>경고 이력</h2>
+                    <p class="section-subtitle">피로도 임계치 도달 기록</p>
+                </div>
+
+                <div class="alert-legend">
+                    <div class="legend-item normal">
+                        <span class="dot"></span>
+                        <span>정상 (< 80%)</span>
+                    </div>
+                    <div class="legend-item warning">
+                        <span class="dot"></span>
+                        <span>주의 (80-94%)</span>
+                    </div>
+                    <div class="legend-item critical">
+                        <span class="dot"></span>
+                        <span>위험 (≥ 95%)</span>
+                    </div>
+                </div>
+
+                <div class="alert-log-container" id="alert-log">
+                    <div class="alert-entry waiting">
+                        <div class="alert-time">--:--:--</div>
+                        <div class="alert-content">
+                            <div class="alert-message">시스템 준비 중...</div>
+                            <div class="alert-details">데이터 수신 대기</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="main-footer">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>BBB 프로젝트</h4>
+                    <p>EMG + IMU 센서 기반 웨어러블 아대</p>
+                    <p>작업자 근피로도 실시간 모니터링</p>
+                </div>
+                <div class="footer-section">
+                    <h4>기술 스택</h4>
+                    <ul>
+                        <li>ESP32-S3 + MicroPython</li>
+                        <li>FastAPI + WebSocket</li>
+                        <li>SciPy FFT 신호처리</li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>모니터링 항목</h4>
+                    <ul>
+                        <li>실시간 EMG 신호</li>
+                        <li>중앙주파수 추출</li>
+                        <li>피로도 지수 판정</li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>연락처</h4>
+                    <p>아주대학교 대학원</p>
+                    <p>경기도 수원시 영통구</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Ajou University Capstone Design | BBB System v1.0</p>
+            </div>
+        </footer>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
