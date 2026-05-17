@@ -723,3 +723,203 @@ canvas {
 ::-webkit-scrollbar-thumb:hover {
     background: var(--color-dark);
 }
+
+/* ============================================
+   Control Mode Section Styles
+   ============================================ */
+
+.control-mode-section {
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.control-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin-top: 25px;
+}
+
+/* Scope Panel */
+.scope-panel,
+.imu-panel {
+    background: #f9fafb;
+    border-radius: 10px;
+    padding: 20px;
+    border: 1px solid var(--color-light-border);
+}
+
+.scope-panel .panel-header,
+.imu-panel .panel-header {
+    margin-bottom: 20px;
+    border-bottom: 2px solid var(--color-ajou-accent);
+    padding-bottom: 15px;
+}
+
+.scope-panel h3,
+.imu-panel h3 {
+    color: var(--color-ajou-navy);
+    font-size: 1.2em;
+    margin-bottom: 5px;
+}
+
+.scope-panel p,
+.imu-panel p {
+    color: #6b7280;
+    font-size: 0.9em;
+}
+
+.scope-wrapper {
+    display: flex;
+    justify-content: center;
+    margin: 20px 0;
+}
+
+.scope {
+    width: 280px;
+    height: 280px;
+    border: 2px solid var(--color-ajou-navy);
+    border-radius: 10px;
+    background: white;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.scope-grid {
+    width: 100%;
+    height: 100%;
+    background-image:
+        linear-gradient(rgba(0, 0, 0, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 0, 0, 0.08) 1px, transparent 1px);
+    background-size: 28px 28px;
+}
+
+.scope-center {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+}
+
+.center-cross {
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.center-cross::before {
+    content: '';
+    position: absolute;
+    width: 40px;
+    height: 2px;
+    background: var(--color-ajou-navy);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.center-cross::after {
+    content: '';
+    position: absolute;
+    width: 2px;
+    height: 40px;
+    background: var(--color-ajou-navy);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.cursor-dot {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    background: var(--color-ajou-light-blue);
+    border: 2px solid var(--color-ajou-navy);
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    transition: all 0.05s ease;
+    box-shadow: 0 0 12px rgba(0, 79, 168, 0.4);
+    z-index: 10;
+}
+
+.cursor-dot.clicked {
+    background: var(--color-danger);
+    border-color: #991b1b;
+    box-shadow: 0 0 20px rgba(220, 38, 38, 0.6);
+    width: 18px;
+    height: 18px;
+}
+
+/* IMU Metrics */
+.imu-metrics {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.metric-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: white;
+    border-radius: 8px;
+    border-left: 3px solid var(--color-ajou-accent);
+}
+
+.metric-item.full-width {
+    grid-column: 1 / -1;
+}
+
+.metric-item .label {
+    color: #6b7280;
+    font-size: 0.95em;
+    font-weight: 500;
+}
+
+.metric-item .value {
+    font-size: 1.3em;
+    font-weight: bold;
+    color: var(--color-ajou-navy);
+    min-width: 100px;
+    text-align: right;
+}
+
+.click-status {
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 1.1em;
+    text-align: center;
+}
+
+.click-status.active {
+    background: var(--color-warning);
+    color: white;
+}
+
+/* Responsive Design for Control Mode */
+@media (max-width: 768px) {
+    .control-container {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .scope {
+        width: 240px;
+        height: 240px;
+    }
+
+    .control-mode-section {
+        padding: 20px;
+    }
+}

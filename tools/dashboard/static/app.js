@@ -140,6 +140,35 @@ class BBBDashboard {
     }
 
     updateDashboard(data) {
+        const mode = data.mode || "unknown";
+
+        // Update mode badge
+        this.updateModeBadge(mode);
+
+        if (mode === "safety") {
+            // Safety Mode Data Processing
+            this.updateSafetyMode(data);
+            document.getElementById("safety-mode-section").style.display = "block";
+            document.getElementById("control-mode-section").style.display = "none";
+        } else if (mode === "control") {
+            // Control Mode Data Processing
+            this.updateControlMode(data);
+            document.getElementById("safety-mode-section").style.display = "none";
+            document.getElementById("control-mode-section").style.display = "block";
+        }
+    }
+
+    updateModeBadge(mode) {
+        const badge = document.getElementById("mode-badge");
+        const modeLabels = {
+            safety: "🔴 안전 모드 (Safety Mode)",
+            control: "🎮 제어 모드 (Control Mode)",
+            unknown: "⏳ 대기 중"
+        };
+        badge.textContent = modeLabels[mode] || "대기 중";
+    }
+
+    updateSafetyMode(data) {
         const {
             fatigue_pct = 0,
             median_freq = 0,
@@ -163,6 +192,44 @@ class BBBDashboard {
 
         // Check for alert level change
         this.checkAlertLevelChange(level, fatigue_pct);
+    }
+
+    updateControlMode(data) {
+        const {
+            pitch = 0,
+            roll = 0,
+            cursor_x = 512,
+            cursor_y = 512,
+            click_detected = false,
+        } = data;
+
+        // Update IMU values
+        document.getElementById("pitch-value").textContent = pitch.toFixed(1) + "°";
+        document.getElementById("roll-value").textContent = roll.toFixed(1) + "°";
+
+        // Update cursor position
+        document.getElementById("cursor-x-value").textContent = Math.round(cursor_x);
+        document.getElementById("cursor-y-value").textContent = Math.round(cursor_y);
+
+        // Update cursor dot position in scope
+        const cursorDot = document.getElementById("cursor-dot");
+        const scopeX = ((cursor_x - 512) / 512) * 100;
+        const scopeY = ((512 - cursor_y) / 512) * 100;
+
+        cursorDot.style.left = `calc(50% + ${scopeX}%)`;
+        cursorDot.style.top = `calc(50% - ${scopeY}%)`;
+
+        // Update click status
+        const clickStatus = document.getElementById("click-status");
+        if (click_detected) {
+            clickStatus.textContent = "🖱️ CLICK 감지!";
+            cursorDot.classList.add("clicked");
+            clickStatus.classList.add("active");
+        } else {
+            clickStatus.textContent = "✋ 준비 중";
+            cursorDot.classList.remove("clicked");
+            clickStatus.classList.remove("active");
+        }
     }
 
     updateGauge(fatigue_pct, level) {

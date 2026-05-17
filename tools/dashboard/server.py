@@ -12,7 +12,7 @@ from collections import deque
 from typing import Dict, List
 
 import numpy as np
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from scipy import signal
@@ -34,11 +34,21 @@ app = FastAPI(title="BBB Dashboard Server")
 active_connections: List[WebSocket] = []
 emg_buffer = deque(maxlen=EMG_SAMPLE_BUFFER_SIZE)
 current_status = {
+    "mode": "unknown",  # "safety" or "control"
     "timestamp": 0,
+    # Safety Mode data
     "fatigue_pct": 0.0,
     "median_freq": 0.0,
     "level": "normal",
     "emg_raw": [],
+    "rms": 0.0,
+    "baseline_rms": 0.0,
+    # Control Mode data
+    "pitch": 0.0,
+    "roll": 0.0,
+    "cursor_x": 512,
+    "cursor_y": 512,
+    "click_detected": False,
 }
 esp32_address = None
 
@@ -136,25 +146,69 @@ async def udp_receiver():
             esp32_address = addr
             try:
                 packet = json.loads(data.decode())
-                emg_samples = packet.get("emg", [])
-                if emg_samples:
-                    emg_buffer.extend(emg_samples)
 
-                    # Process if buffer has enough samples (100ms of 1kHz data = 100 samples)
-                    if len(emg_buffer) >= 100:
-                        result = analyzer.process_emg_chunk(list(emg_buffer)[-100:])
-                        current_status.update(
-                            {
-                                "timestamp": datetime.now().timestamp(),
-                                "fatigue_pct": result["fatigue_pct"],
-                                "median_freq": result["median_freq"],
-                                "level": result["level"],
-                                "emg_raw": list(emg_buffer)[-100:],
-                            }
-                        )
-                        logger.info(
-                            f"EMG: {result['fatigue_pct']:.1f}% ({result['level'].upper()})"
-                        )
+                # Check if this is raw EMG data or processed monitoring data
+                if "emg" in packet:
+                    # Raw EMG sample format (from streaming EMG collection)
+                    emg_samples = packet.get("emg", [])
+                    if emg_samples:
+                        emg_buffer.extend(emg_samples)
+
+                        # Process if buffer has enough samples (100ms of 1kHz data = 100 samples)
+                        if len(emg_buffer) >= 100:
+                            result = analyzer.process_emg_chunk(list(emg_buffer)[-100:])
+                            current_status.update(
+                                {
+                                    "timestamp": datetime.now().timestamp(),
+                                    "fatigue_pct": result["fatigue_pct"],
+                                    "median_freq": result["median_freq"],
+                                    "level": result["level"],
+                                    "emg_raw": list(emg_buffer)[-100:],
+                                }
+                            )
+                            logger.info(
+                                f"EMG: {result['fatigue_pct']:.1f}% ({result['level'].upper()})"
+                            )
+                elif packet.get("mode") == "safety":
+                    # Safety Mode data
+                    current_status.update(
+                        {
+                            "mode": "safety",
+                            "timestamp": datetime.now().timestamp(),
+                            "fatigue_pct": packet.get("signal_pct", 0.0),
+                            "median_freq": 0.0,
+                            "level": packet.get("level", "normal"),
+                            "emg_raw": [],
+                            "rms": packet.get("rms", 0.0),
+                            "baseline_rms": packet.get("baseline_rms", 0.0),
+                        }
+                    )
+                    logger.info(
+                        f"Safety Mode: {packet.get('level', 'unknown').upper()} "
+                        f"({packet.get('signal_pct', 0):.1f}%) RMS={packet.get('rms', 0):.1f}"
+                    )
+                elif packet.get("mode") == "control":
+                    # Control Mode data
+                    current_status.update(
+                        {
+                            "mode": "control",
+                            "timestamp": datetime.now().timestamp(),
+                            "pitch": packet.get("pitch", 0.0),
+                            "roll": packet.get("roll", 0.0),
+                            "cursor_x": packet.get("cursor_x", 512),
+                            "cursor_y": packet.get("cursor_y", 512),
+                            "click_detected": packet.get("click_detected", False),
+                            "emg_raw": packet.get("emg_raw", 0),
+                        }
+                    )
+                    logger.info(
+                        f"Control Mode: Pitch={packet.get('pitch', 0):.1f}° "
+                        f"Roll={packet.get('roll', 0):.1f}° "
+                        f"Cursor=({packet.get('cursor_x', 0)},{packet.get('cursor_y', 0)}) "
+                        f"Click={packet.get('click_detected', False)}"
+                    )
+                else:
+                    logger.warning(f"Unknown packet format from {addr}: {packet}")
             except json.JSONDecodeError:
                 logger.warning("Invalid JSON from ESP32")
 
@@ -170,11 +224,29 @@ async def websocket_broadcaster():
         if active_connections:
             message = {
                 "timestamp": current_status["timestamp"],
-                "fatigue_pct": current_status["fatigue_pct"],
-                "median_freq": current_status["median_freq"],
-                "level": current_status["level"],
-                "emg_raw": current_status["emg_raw"],
+                "mode": current_status.get("mode", "unknown"),
             }
+
+            # Add mode-specific data
+            if current_status.get("mode") == "safety":
+                message.update({
+                    "fatigue_pct": current_status["fatigue_pct"],
+                    "median_freq": current_status["median_freq"],
+                    "level": current_status["level"],
+                    "emg_raw": current_status["emg_raw"],
+                    "rms": current_status.get("rms", 0.0),
+                    "baseline_rms": current_status.get("baseline_rms", 0.0),
+                })
+            elif current_status.get("mode") == "control":
+                message.update({
+                    "pitch": current_status.get("pitch", 0.0),
+                    "roll": current_status.get("roll", 0.0),
+                    "cursor_x": current_status.get("cursor_x", 512),
+                    "cursor_y": current_status.get("cursor_y", 512),
+                    "click_detected": current_status.get("click_detected", False),
+                    "emg_raw": current_status.get("emg_raw", 0),
+                })
+
             for connection in active_connections[:]:
                 try:
                     await connection.send_json(message)
@@ -249,6 +321,42 @@ async def get_status():
         "median_freq": current_status["median_freq"],
         "level": current_status["level"],
     }
+
+
+@app.post("/api/monitoring_data")
+async def receive_monitoring_data(request: Request):
+    """
+    Receive monitoring-level data from ESP32 via WiFi
+    Expected format: {
+        "rms": float,
+        "signal_pct": float,
+        "level": str,
+        "iteration": int
+    }
+    """
+    global current_status
+
+    try:
+        data = await request.json()
+
+        # Update current status with monitoring data
+        current_status.update(
+            {
+                "timestamp": datetime.now().timestamp(),
+                "fatigue_pct": data.get("signal_pct", 0.0),
+                "level": data.get("level", "normal"),
+            }
+        )
+
+        logger.info(
+            f"Monitoring data received: {data.get('level', 'unknown').upper()} "
+            f"({data.get('signal_pct', 0):.1f}%) RMS={data.get('rms', 0):.1f}"
+        )
+
+        return {"status": "ok"}
+    except Exception as e:
+        logger.error(f"Monitoring data receive error: {e}")
+        return {"status": "error", "message": str(e)}
 
 
 # Mount static files

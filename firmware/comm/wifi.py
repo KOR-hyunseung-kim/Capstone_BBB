@@ -1,194 +1,126 @@
 """
-WiFi UDP Communication for BBB
-- Send: Raw EMG/IMU data to PC
-- Receive: Fatigue analysis results from PC
+WiFi UDP Communication Module
+Sends sensor data to PC dashboard (Control Mode & Safety Mode)
 """
 
 import socket
 import json
-import network
-from typing import Dict, Optional, Tuple
+import time
+import config
 
 
 class WiFiManager:
-    """WiFi connection and status management"""
+    """Manage WiFi connection and UDP data transmission"""
 
-    def __init__(self, ssid: str, password: str):
-        """
-        Initialize WiFi manager
-
-        Args:
-            ssid: WiFi network name
-            password: WiFi password
-        """
-        self.ssid = ssid
-        self.password = password
-        self.wlan = network.WLAN(network.STA_IF)
+    def __init__(self):
+        """Initialize WiFi manager"""
+        self.sock = None
         self.connected = False
+        self.pc_address = (config.PC_IP, config.PC_PORT)
+        self.connect()
 
-    def connect(self, timeout_sec: int = 10) -> bool:
-        """
-        Connect to WiFi network
+    def connect(self):
+        """Connect to WiFi network"""
+        if not config.WIFI_ENABLED:
+            print("[WiFi] WiFi disabled in config")
+            return
 
-        Args:
-            timeout_sec: Connection timeout in seconds
+        try:
+            import network
+            import time as time_module
 
-        Returns:
-            True if connected, False otherwise
-        """
-        if self.wlan.isconnected():
-            return True
+            # Connect to WiFi
+            wlan = network.WLAN(network.STA_IF)
+            wlan.active(True)
 
-        self.wlan.active(True)
-        self.wlan.connect(self.ssid, self.password)
+            if not wlan.isconnected():
+                print(f"[WiFi] Connecting to {config.WIFI_SSID}...")
+                wlan.connect(config.WIFI_SSID, config.WIFI_PASSWORD)
 
-        for _ in range(timeout_sec * 10):
-            if self.wlan.isconnected():
+                # Wait for connection
+                timeout = config.WIFI_CONNECT_TIMEOUT
+                start_time = time_module.time()
+                while not wlan.isconnected() and (time_module.time() - start_time) < timeout:
+                    time_module.sleep(0.1)
+
+            if wlan.isconnected():
+                print(f"[WiFi] ✅ Connected! IP: {wlan.ifconfig()[0]}")
                 self.connected = True
-                ip_info = self.wlan.ifconfig()
-                print(f"WiFi connected: {ip_info[0]}")
-                return True
-            import time
+            else:
+                print("[WiFi] ❌ Connection failed")
 
-            time.sleep(0.1)
+        except Exception as e:
+            print(f"[WiFi] Connection error: {e}")
 
-        print("WiFi connection failed")
-        return False
-
-    def disconnect(self) -> None:
-        """Disconnect from WiFi"""
-        self.wlan.disconnect()
-        self.connected = False
-
-    def get_ip(self) -> Optional[str]:
-        """Get IP address"""
-        if self.wlan.isconnected():
-            return self.wlan.ifconfig()[0]
-        return None
-
-    def is_connected(self) -> bool:
-        """Check connection status"""
-        return self.wlan.isconnected()
-
-
-class UDPComm:
-    """
-    UDP communication for EMG data transmission and analysis result reception
-    """
-
-    def __init__(self, pc_ip: str, pc_port: int = 5005):
+    def send_control_mode_data(self, pitch, roll, cursor_x, cursor_y, emg_raw, click_detected):
         """
-        Initialize UDP communication
+        Send Control Mode data to PC dashboard
 
         Args:
-            pc_ip: PC IP address
-            pc_port: UDP port (default 5005)
+            pitch: Arm pitch angle (degrees)
+            roll: Arm roll angle (degrees)
+            cursor_x: Cursor X position (0~1024)
+            cursor_y: Cursor Y position (0~1024)
+            emg_raw: Raw EMG value
+            click_detected: Boolean, click detected
         """
-        self.pc_ip = pc_ip
-        self.pc_port = pc_port
-        self.sock_tx = None
-        self.sock_rx = None
-        self.local_port = pc_port  # Use same port for bidirectional communication
-
-    def init_transmitter(self) -> bool:
-        """Initialize UDP socket for sending data"""
-        try:
-            self.sock_tx = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            return True
-        except Exception as e:
-            print(f"UDP TX init error: {e}")
-            return False
-
-    def init_receiver(self) -> bool:
-        """Initialize UDP socket for receiving analysis results"""
-        try:
-            self.sock_rx = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            self.sock_rx.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            self.sock_rx.bind(("0.0.0.0", self.local_port))
-            self.sock_rx.settimeout(0.1)  # Non-blocking with 100ms timeout
-            return True
-        except Exception as e:
-            print(f"UDP RX init error: {e}")
-            return False
-
-    def send_emg_data(self, emg_samples: list) -> bool:
-        """
-        Send EMG data to PC
-
-        Args:
-            emg_samples: List of EMG ADC values
-
-        Returns:
-            True if sent successfully
-        """
-        if not self.sock_tx:
-            return False
+        if not self.connected:
+            return
 
         try:
-            payload = {"emg": emg_samples}
-            data = json.dumps(payload).encode()
-            self.sock_tx.sendto(data, (self.pc_ip, self.pc_port))
-            return True
-        except Exception as e:
-            print(f"EMG send error: {e}")
-            return False
-
-    def send_imu_data(self, accel: Tuple, gyro: Tuple) -> bool:
-        """
-        Send IMU data to PC
-
-        Args:
-            accel: (x, y, z) acceleration
-            gyro: (x, y, z) angular velocity
-
-        Returns:
-            True if sent successfully
-        """
-        if not self.sock_tx:
-            return False
-
-        try:
-            payload = {
-                "imu": {
-                    "accel": list(accel),
-                    "gyro": list(gyro),
-                }
+            packet = {
+                "mode": "control",
+                "pitch": round(pitch, 1),
+                "roll": round(roll, 1),
+                "cursor_x": cursor_x,
+                "cursor_y": cursor_y,
+                "emg_raw": emg_raw,
+                "click_detected": click_detected,
+                "timestamp": time.time(),
             }
-            data = json.dumps(payload).encode()
-            self.sock_tx.sendto(data, (self.pc_ip, self.pc_port))
-            return True
+
+            data = json.dumps(packet).encode()
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.sendto(data, self.pc_address)
+            sock.close()
+
         except Exception as e:
-            print(f"IMU send error: {e}")
-            return False
+            if config.DEBUG:
+                print(f"[WiFi] Send error: {e}")
 
-    def recv_analysis_result(self) -> Optional[Dict]:
+    def send_safety_mode_data(self, rms, fatigue_pct, level, baseline_rms):
         """
-        Receive analysis results from PC (non-blocking)
+        Send Safety Mode data to PC dashboard
 
-        Returns:
-            {
-                "fatigue_pct": float,
-                "mf": float,
-                "level": str,
-            }
-            or None if no data available
+        Args:
+            rms: Current RMS value
+            fatigue_pct: Fatigue percentage (0~100)
+            level: Fatigue level ("normal", "warning", "critical")
+            baseline_rms: Baseline RMS value
         """
-        if not self.sock_rx:
-            return None
+        if not self.connected:
+            return
 
         try:
-            data, _ = self.sock_rx.recvfrom(256)
-            result = json.loads(data.decode())
-            return result
-        except socket.timeout:
-            return None
-        except Exception as e:
-            print(f"Analysis result recv error: {e}")
-            return None
+            packet = {
+                "mode": "safety",
+                "rms": round(rms, 1),
+                "signal_pct": round(fatigue_pct, 1),
+                "level": level,
+                "baseline_rms": round(baseline_rms, 1) if baseline_rms else 0,
+                "timestamp": time.time(),
+            }
 
-    def close(self) -> None:
-        """Close UDP sockets"""
-        if self.sock_tx:
-            self.sock_tx.close()
-        if self.sock_rx:
-            self.sock_rx.close()
+            data = json.dumps(packet).encode()
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.sendto(data, self.pc_address)
+            sock.close()
+
+        except Exception as e:
+            if config.DEBUG:
+                print(f"[WiFi] Send error: {e}")
+
+    def close(self):
+        """Close WiFi connection"""
+        if self.sock:
+            self.sock.close()
