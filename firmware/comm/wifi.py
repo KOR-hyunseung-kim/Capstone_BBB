@@ -17,7 +17,10 @@ class WiFiManager:
         self.sock = None
         self.connected = False
         self.pc_address = (config.PC_IP, config.PC_PORT)
+        self.send_count = 0
+        self.last_reconnect_attempt = 0
         self.connect()
+        self._create_socket()
 
     def connect(self):
         """Connect to WiFi network"""
@@ -52,6 +55,19 @@ class WiFiManager:
         except Exception as e:
             print(f"[WiFi] Connection error: {e}")
 
+    def _create_socket(self):
+        """Create and configure UDP socket (reusable)"""
+        try:
+            if self.sock:
+                self.sock.close()
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            # Set non-blocking mode to avoid hanging
+            self.sock.setblocking(False)
+        except Exception as e:
+            if config.DEBUG:
+                print(f"[WiFi] Socket creation error: {e}")
+            self.sock = None
+
     def send_control_mode_data(self, pitch, roll, cursor_x, cursor_y, emg_raw, click_detected):
         """
         Send Control Mode data to PC dashboard
@@ -64,7 +80,7 @@ class WiFiManager:
             emg_raw: Raw EMG value
             click_detected: Boolean, click detected
         """
-        if not self.connected:
+        if not self.connected or not self.sock:
             return
 
         try:
@@ -80,10 +96,15 @@ class WiFiManager:
             }
 
             data = json.dumps(packet).encode()
-            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            sock.sendto(data, self.pc_address)
-            sock.close()
+            self.sock.sendto(data, self.pc_address)
+            self.send_count += 1
 
+        except OSError as e:
+            # Memory error or socket issue - try to recreate socket
+            if e.errno == 12:  # ENOMEM
+                self._create_socket()
+            if config.DEBUG and config.DEBUG_CONTROL_MODE:
+                print(f"[WiFi] Send error: {e}")
         except Exception as e:
             if config.DEBUG:
                 print(f"[WiFi] Send error: {e}")
@@ -98,7 +119,7 @@ class WiFiManager:
             level: Fatigue level ("normal", "warning", "critical")
             baseline_rms: Baseline RMS value
         """
-        if not self.connected:
+        if not self.connected or not self.sock:
             return
 
         try:
@@ -112,10 +133,15 @@ class WiFiManager:
             }
 
             data = json.dumps(packet).encode()
-            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            sock.sendto(data, self.pc_address)
-            sock.close()
+            self.sock.sendto(data, self.pc_address)
+            self.send_count += 1
 
+        except OSError as e:
+            # Memory error or socket issue - try to recreate socket
+            if e.errno == 12:  # ENOMEM
+                self._create_socket()
+            if config.DEBUG and config.DEBUG_SAFETY_MODE:
+                print(f"[WiFi] Send error: {e}")
         except Exception as e:
             if config.DEBUG:
                 print(f"[WiFi] Send error: {e}")
