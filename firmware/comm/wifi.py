@@ -63,10 +63,32 @@ class WiFiManager:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             # Set non-blocking mode to avoid hanging
             self.sock.setblocking(False)
+            if config.DEBUG:
+                print(f"[WiFi] Socket created for {self.pc_address}")
         except Exception as e:
             if config.DEBUG:
                 print(f"[WiFi] Socket creation error: {e}")
             self.sock = None
+
+    def _check_connection(self):
+        """Check if WiFi is still connected and reconnect if needed"""
+        try:
+            import network
+            wlan = network.WLAN(network.STA_IF)
+            if not wlan.isconnected():
+                print(f"[WiFi] ⚠️  Connection lost! Attempting to reconnect...")
+                self.connected = False
+                self.connect()
+                if self.connected:
+                    self._create_socket()
+                    print(f"[WiFi] ✅ Reconnected!")
+                    return True
+                return False
+            return True
+        except Exception as e:
+            if config.DEBUG:
+                print(f"[WiFi] Connection check error: {e}")
+            return False
 
     def send_control_mode_data(self, pitch, roll, cursor_x, cursor_y, emg_raw, click_detected):
         """
@@ -82,6 +104,11 @@ class WiFiManager:
         """
         if not self.connected or not self.sock:
             return
+
+        # Periodically check connection (every 100 sends)
+        if self.send_count % 100 == 0:
+            if not self._check_connection():
+                return
 
         try:
             packet = {
@@ -103,6 +130,9 @@ class WiFiManager:
             # Memory error or socket issue - try to recreate socket
             if e.errno == 12:  # ENOMEM
                 self._create_socket()
+            elif e.errno == 107 or e.errno == 104:  # Transport endpoint / Connection reset
+                print(f"[WiFi] Connection error, checking WiFi...")
+                self._check_connection()
             if config.DEBUG and config.DEBUG_CONTROL_MODE:
                 print(f"[WiFi] Send error: {e}")
         except Exception as e:
@@ -122,6 +152,11 @@ class WiFiManager:
         if not self.connected or not self.sock:
             return
 
+        # Periodically check connection (every 100 sends)
+        if self.send_count % 100 == 0:
+            if not self._check_connection():
+                return
+
         try:
             packet = {
                 "mode": "safety",
@@ -140,6 +175,9 @@ class WiFiManager:
             # Memory error or socket issue - try to recreate socket
             if e.errno == 12:  # ENOMEM
                 self._create_socket()
+            elif e.errno == 107 or e.errno == 104:  # Transport endpoint / Connection reset
+                print(f"[WiFi] Connection error, checking WiFi...")
+                self._check_connection()
             if config.DEBUG and config.DEBUG_SAFETY_MODE:
                 print(f"[WiFi] Send error: {e}")
         except Exception as e:
