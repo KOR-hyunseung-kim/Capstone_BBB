@@ -120,7 +120,8 @@ def print_mode_info(mode):
         if config.DEBUG_CONTROL_MODE:
             print("        Accelerometer & Gyroscope calibration (50 samples each)")
             print("        Complementary filter alpha: %.2f" % config.COMPLEMENTARY_FILTER_ALPHA)
-            print("        Cursor speed: %d pixels/degree" % config.CURSOR_SPEED_FACTOR)
+            print("        Cursor speed: %d~%d pixels/degree (deadzone %.1f°)" %
+                  (config.CURSOR_SPEED_MIN, config.CURSOR_SPEED_MAX, config.CURSOR_DEADZONE))
         print("[Setup] Control:")
         print("        • Tilt arm FORWARD/BACKWARD (pitch) → Cursor Y movement")
         print("        • Tilt arm LEFT/RIGHT (roll)      → Cursor X movement")
